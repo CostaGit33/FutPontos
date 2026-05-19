@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#111c27"/>
+<title>Controle de Jogos</title>
+<script src="cordova.js"></script>
+<script src="lib/react.production.min.js"></script>
+<script src="lib/react-dom.production.min.js"></script>
+<script src="lib/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:        #111c27;
+  --surface:   #19273a;
+  --surface2:  #1f3149;
+  --border:    #274060;
+  --border2:   #1e3252;
+  --blue:      #38bdf8;
+  --blue-dim:  rgba(56,189,248,0.12);
+  --green:     #4ade80;
+  --green-dim: rgba(74,222,128,0.12);
+  --red:       #f87171;
+  --red-dim:   rgba(248,113,113,0.12);
+  --amber:     #fbbf24;
+  --text:      #e2e8f0;
+  --sub:       #7a95b0;
+  --inp:       #0f1f2e;
+  --radius-sm: 8px;
+  --radius:    12px;
+  --radius-lg: 18px;
+}
+
+html{height:100%;overflow-x:hidden}
+body{
+  background:var(--bg);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  color:var(--text);
+  min-height:100%;
+  -webkit-font-smoothing:antialiased;
+}
+input,select,button{font-family:inherit}
+input:focus,select:focus{outline:none}
+button,input,select{min-height:36px}
+button{touch-action:manipulation}
+
+/* ── Scrollbars ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+/* ── Botões ── */
+button{transition:opacity .15s,transform .1s,background .15s,box-shadow .15s}
+button:active{transform:scale(.96)}
+
+/* ── Inputs ── */
+.inp-base{
+  background:var(--inp);
+  border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:10px 10px;
+  font-size:14px;
+  color:var(--text);
+  width:100%;
+  transition:border-color .2s;
+}
+.inp-base:focus{border-color:var(--blue)}
+.inp-base::placeholder{color:var(--sub)}
+
+/* ── Layout raiz (mobile-first) ── */
+#root{display:flex;flex-direction:column;min-height:100vh}
+
+/* ── DESKTOP: sidebar layout ── */
+@media(min-width:900px){
+  .app-shell{
+    display:grid;
+    grid-template-columns:minmax(280px,340px) minmax(0,1fr);
+    grid-template-rows:auto minmax(0,1fr) auto;
+    height:100vh;
+    min-height:100dvh;
+    overflow:hidden;
+  }
+  .app-header{
+    grid-column:1/-1;
+  }
+  .sidebar{
+    grid-row:2/4;
+    min-height:0;
+    overflow-y:auto;
+    border-right:1px solid var(--border2);
+    background:var(--surface);
+    padding:16px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .main-content{
+    overflow-y:auto;
+    padding:20px;
+    min-width:0;
+    min-height:0;
+  }
+  .footer-bar{
+    grid-column:2;
+    grid-row:3;
+    position:static;
+  }
+  .summary-grid{
+    grid-template-columns:1fr 1fr !important;
+  }
+  .date-scroll{
+    flex-direction:column !important;
+    gap:6px !important;
+  }
+  .date-btn{
+    width:100% !important;
+    flex-direction:row !important;
+    justify-content:space-between !important;
+    border-radius:var(--radius-sm) !important;
+  }
+  .date-item{width:100%}
+  .hide-desktop{display:none !important}
+}
+
+/* ── MOBILE ── */
+@media(max-width:899px){
+  .app-shell{display:flex;flex-direction:column;min-height:100vh}
+  .sidebar{display:none}
+  .main-content{flex:1;padding:14px;padding-bottom:calc(80px + env(safe-area-inset-bottom))}
+  .footer-bar{
+    position:fixed;bottom:0;left:0;right:0;
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom)) !important;
+  }
+  .summary-grid{grid-template-columns:1fr 1fr !important}
+  .hide-mobile{display:none !important}
+}
+
+@media(max-width:520px){
+  .app-header{padding:12px 14px !important}
+  .brand-icon{width:38px !important;height:38px !important}
+  .brand-title{font-size:16px !important}
+  .brand-subtitle{font-size:10px !important}
+  .jogo-head{flex-wrap:wrap}
+  .jogo-title{flex:1 1 100% !important}
+  .jogo-status{flex:1 1 auto !important;min-width:0}
+  .calc-row{
+    display:grid !important;
+    grid-template-columns:1fr 1fr;
+    gap:8px !important;
+    align-items:stretch !important;
+  }
+  .calc-row .calc-op{display:none}
+  .calc-row > div:last-child{grid-column:1/-1}
+  .reinvest-grid{grid-template-columns:1fr !important}
+  .banca-grid{grid-template-columns:1fr !important}
+  .plan-grid{grid-template-columns:1fr 1fr !important}
+  .jogo-meta-grid{grid-template-columns:1fr !important}
+  .grupo-head{align-items:flex-start !important;flex-wrap:wrap}
+  .grupo-title{flex:1 1 calc(100% - 86px) !important}
+  .grupo-metrics{order:3;flex:1 1 100%;align-items:flex-start !important;margin-left:30px;margin-right:0 !important}
+  .grupo-total{flex-direction:column;align-items:flex-start !important;gap:4px}
+}
+
+/* ── Componentes comuns ── */
+.card{
+  background:var(--surface);
+  border-radius:var(--radius-lg);
+  border:1px solid var(--border2);
+}
+.card2{background:var(--surface2)}
+.tag{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  border-radius:20px;
+  padding:4px 12px;
+  font-size:11px;
+  font-weight:700;
+}
+
+/* ── Animações ── */
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.jogo-card{animation:slideIn .2s ease}
+
+/* ── Entrada calc row ── */
+.calc-row{display:flex;gap:6px;align-items:flex-end}
+.calc-row .calc-op{
+  font-size:16px;color:var(--border);font-weight:900;
+  padding-bottom:10px;flex-shrink:0;line-height:1;
+}
+@media(max-width:360px){
+  .main-content{padding-left:10px;padding-right:10px}
+  .summary-grid{grid-template-columns:1fr !important}
+  .calc-row{grid-template-columns:1fr !important}
+  .calc-row > div:last-child{grid-column:auto}
+  .footer-bar{gap:8px}
+  .footer-bar > div{min-width:0}
+}
+.section-title{
+  font-size:10px;
+  font-weight:800;
+  color:var(--sub);
+  text-transform:uppercase;
+  letter-spacing:.8px;
+  margin-bottom:8px;
+}
+.mini-label{
+  font-size:10px;
+  color:var(--blue);
+  font-weight:700;
+  text-transform:uppercase;
+  margin-bottom:4px;
+}
+.plan-grid,.jogo-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.risk-banner{
+  border-radius:var(--radius);
+  padding:10px 12px;
+  font-size:13px;
+  font-weight:800;
+  line-height:1.25;
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useMemo,useEffect,useCallback,useRef}=React;
+
+/* ── Utils ── */
+const fmt=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const fmtP=v=>`${v>=0?'+':''}${v.toFixed(1)}%`;
+const toNumber=v=>{
+  if(typeof v==='number')return Number.isFinite(v)?v:0;
+  const raw=String(v??'').trim();
+  const s=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw;
+  const n=parseFloat(s);
+  return Number.isFinite(n)?n:0;
+};
+const fmtCurto=v=>{
+  const abs=Math.abs(v);
+  const s=v<0?'-':'';
+  if(abs>=1000)return `${s}${(abs/1000).toFixed(1)}k`;
+  return `${s}${abs.toFixed(0)}`;
+};
+
+let _id=Date.now();
+const uid=()=>(_id++).toString(36);
+
+const dataHoje=()=>{
+  const d=new Date();
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+};
+
+/* BUG FIX #1: novoJogo agora inclui campo 'status' */
+const novoJogo=()=>({
+  id:uid(),
+  desc:'',
+  mercado:'',
+  motivo:'',
+  confianca:'media',
+  seguiuPlano:true,
+  status:'ativo',  /* ← corrigido */
+  entrada:'',
+  fator:'',
+  resultado:null,
+  reinvest:{ativo:false,retirada:'',reaposta:'',retornoReaposta:''}
+});
+
+const novoGrupo=n=>({id:uid(),nome:`Tabela ${n}`,aberto:true,perdaAberta:true,jogos:[novoJogo()]});
+const novoDia=data=>({data,grupos:[novoGrupo(1)]});
+const novaAllWinOpp=()=>({id:uid(),nome:'',odd:'',resultado:null});
+const novoAllWin=()=>({banca:'',stakeInicial:'',oportunidades:[novaAllWinOpp()]});
+
+/* BUG FIX #2: addDia correto — parte da última data do array */
+const proximaData=(dias)=>{
+  if(!dias.length)return dataHoje();
+  const ultima=dias[dias.length-1].data;
+  const [dd,mm]=ultima.split('/').map(Number);
+  const nd=new Date(new Date().getFullYear(),mm-1,dd+1);
+  return `${String(nd.getDate()).padStart(2,'0')}/${String(nd.getMonth()+1).padStart(2,'0')}`;
+};
+
+/* ── Cálculo de jogo ── */
+function calcJogo(j){
+  const en=toNumber(j.entrada);
+  const fa=toNumber(j.fator);
+  const perdeu=j.resultado==='perdeu';
+  const ganhou=j.resultado==='ganhou';
+  const re=perdeu?0:en*fa;
+  const lu=perdeu?-en:re-en;
+  const pc=en>0?(lu/en)*100:0;
+  const rv=j.reinvest;
+  const ra=toNumber(rv.reaposta);
+  const rr=toNumber(rv.retornoReaposta);
+  const lr=rr>0?rr-ra:null;
+  const pr=ra>0&&rr>0?((rr-ra)/ra)*100:null;
+  /* BUG FIX #5: ok só true quando tem resultado definido ou pelo menos tem dados */
+  const ok=en>0&&(perdeu||fa>0);
+  return{...j,en,fa,re,lu,pc,ra,rr,lr,pr,luTotal:lu+(lr||0),ok,perdeu,ganhou};
+}
+
+function calcAllWin(allWin){
+  const banca=toNumber(allWin.banca);
+  const stakeInicial=toNumber(allWin.stakeInicial);
+  let proximaEntrada=stakeInicial;
+  let travado=false;
+  let ultimoRetorno=0;
+  const oportunidades=(allWin.oportunidades||[]).map((o,i)=>{
+    const odd=toNumber(o.odd);
+    const entrada=travado?0:proximaEntrada;
+    const retorno=entrada>0&&odd>0?entrada*odd:0;
+    const ganhou=o.resultado==='ganhou';
+    const perdeu=o.resultado==='perdeu';
+    const lucro=ganhou?retorno-stakeInicial:perdeu?-stakeInicial:null;
+    if(ganhou){
+      proximaEntrada=retorno;
+      ultimoRetorno=retorno;
+    }else if(perdeu){
+      proximaEntrada=0;
+      ultimoRetorno=0;
+      travado=true;
+    }else{
+      proximaEntrada=retorno||entrada;
+      ultimoRetorno=retorno;
+    }
+    return{...o,idx:i+1,oddNum:odd,entrada,retorno,lucro,ganhou,perdeu,travado};
+  });
+  const resolvidas=oportunidades.filter(o=>o.resultado);
+  const perdas=resolvidas.filter(o=>o.perdeu).length;
+  const ganhos=resolvidas.filter(o=>o.ganhou).length;
+  const emAndamento=!travado&&resolvidas.length<oportunidades.length;
+  const saldoProjetado=stakeInicial>0?(travado?0:ultimoRetorno||stakeInicial):0;
+  const lucroAtual=saldoProjetado-stakeInicial;
+  const bancaFinal=banca>0?banca-stakeInicial+saldoProjetado:null;
+  return{...allWin,banca,stakeInicial,oportunidades,resolvidas:resolvidas.length,ganhos,perdas,travado,emAndamento,saldoProjetado,lucroAtual,bancaFinal};
+}
+
+/* ── Persistência ── */
+function load(k,def){try{const v=localStorage.getItem(k);return v!=null?JSON.parse(v):def;}catch{return def;}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+
+/* ═══════════════════════════════════════════════
+   COMPONENTES
+   ═══════════════════════════════════════════════ */
+
+/* ── StatCard ── */
+function StatCard({label,value,sub,color,icon}){
+  return(
+    <div style={{
+      background:'var(--surface2)',borderRadius:'var(--radius)',padding:'12px 14px',
+      border:`1px solid ${color}33`,position:'relative',overflow:'hidden'
+    }}>
+      <div style={{fontSize:10,fontWeight:800,color:'var(--sub)',textTransform:'uppercase',letterSpacing:.8,marginBottom:4}}>
+        {icon} {label}
+      </div>
+      <div style={{fontSize:17,fontWeight:900,color,fontFamily:'Georgia,serif',lineHeight:1.1}}>{value}</div>
+      {sub&&<div style={{fontSize:11,color:'var(--sub)',marginTop:3}}>{sub}</div>}
+      <div style={{position:'absolute',bottom:0,left:0,right:0,height:2,background:color,opacity:.7}}/>
+    </div>
+  );
+}
+
+/* ── JogoCard ── */
+function JogoCard({j,gid,upJogo,delJogo,setResultado,togReinvest,upReinvest}){
+  const jc=calcJogo(j);
+  const{perdeu,ganhou}=jc;
+
+  const borderColor=perdeu?'var(--red)':ganhou?'var(--green)':'var(--border)';
+
+  const inpS={
+    background:'var(--inp)',border:'1.5px solid var(--border)',borderRadius:'var(--radius-sm)',
+    padding:'10px 8px',fontSize:13,color:'var(--text)',width:'100%',
+    transition:'border-color .2s'
+  };
+
+  return(
+    <div className="jogo-card" style={{
+      background:'var(--surface2)',borderRadius:14,padding:12,marginTop:10,
+      borderLeft:`3px solid ${borderColor}`,
+      boxShadow:`0 2px 12px rgba(0,0,0,.25)`
+    }}>
+      {/* Linha de cabeçalho */}
+      <div className="jogo-head" style={{display:'flex',gap:8,alignItems:'center',marginBottom:10}}>
+        <input
+          className="jogo-title"
+          placeholder="Nome do jogo..."
+          value={j.desc}
+          onChange={e=>upJogo(gid,j.id,'desc',e.target.value)}
+          style={{flex:1,background:'transparent',border:'none',borderBottom:'1.5px solid var(--border2)',
+            padding:'4px 0',fontSize:14,fontWeight:700,color:'var(--text)',minWidth:0,transition:'border-color .2s'}}
+          onFocus={e=>e.target.style.borderBottomColor='var(--blue)'}
+          onBlur={e=>e.target.style.borderBottomColor='var(--border2)'}
+        />
+        {/* BUG FIX #1: status agora funciona corretamente */}
+        <select
+          className="jogo-status"
+          value={j.status||'ativo'}
+          onChange={e=>upJogo(gid,j.id,'status',e.target.value)}
+          style={{background:'var(--inp)',border:'1px solid var(--border)',borderRadius:6,
+            color:'var(--sub)',fontSize:11,padding:'5px 6px',cursor:'pointer',flexShrink:0}}
+        >
+          <option value="ativo">✅ Ativo</option>
+          <option value="encerrado">🔵 Encerrado</option>
+          <option value="pendente">🟡 Pendente</option>
+        </select>
+        <button
+          onClick={()=>delJogo(gid,j.id)}
+          style={{width:28,height:28,background:'var(--red-dim)',border:'1px solid var(--red)',
+            borderRadius:7,color:'var(--red)',fontSize:17,cursor:'pointer',display:'flex',
+            alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0}}
+          title="Remover jogo"
+        >×</button>
+      </div>
+
+      {/* Botões de resultado */}
+      <div style={{display:'flex',gap:8,marginBottom:10}}>
+        <button
+          onClick={()=>setResultado(gid,j.id,'ganhou')}
+          style={{flex:1,padding:'9px 4px',borderRadius:'var(--radius-sm)',cursor:'pointer',fontWeight:700,fontSize:13,
+            border:`1.5px solid ${ganhou?'var(--green)':'var(--border)'}`,
+            background:ganhou?'var(--green-dim)':'transparent',
+            color:ganhou?'var(--green)':'var(--sub)'}}
+        >✅ Ganhou</button>
+        <button
+          onClick={()=>setResultado(gid,j.id,'perdeu')}
+          style={{flex:1,padding:'9px 4px',borderRadius:'var(--radius-sm)',cursor:'pointer',fontWeight:700,fontSize:13,
+            border:`1.5px solid ${perdeu?'var(--red)':'var(--border)'}`,
+            background:perdeu?'var(--red-dim)':'transparent',
+            color:perdeu?'var(--red)':'var(--sub)'}}
+        >❌ Perdeu</button>
+      </div>
+
+      {/* Linha de cálculo */}
+      <div className="jogo-meta-grid" style={{marginBottom:10}}>
+        <div>
+          <div className="mini-label">Mercado</div>
+          <input
+            style={inpS}
+            placeholder="Ex: over, escanteios..."
+            value={j.mercado||''}
+            onChange={e=>upJogo(gid,j.id,'mercado',e.target.value)}
+          />
+        </div>
+        <div>
+          <div className="mini-label">Confianca</div>
+          <select
+            value={j.confianca||'media'}
+            onChange={e=>upJogo(gid,j.id,'confianca',e.target.value)}
+            style={{...inpS,cursor:'pointer'}}
+          >
+            <option value="baixa">Baixa</option>
+            <option value="media">Media</option>
+            <option value="alta">Alta</option>
+          </select>
+        </div>
+      </div>
+
+      <div style={{display:'grid',gap:8,marginBottom:10}}>
+        <div>
+          <div className="mini-label">Motivo da entrada</div>
+          <input
+            style={inpS}
+            placeholder="Por que essa aposta faz sentido?"
+            value={j.motivo||''}
+            onChange={e=>upJogo(gid,j.id,'motivo',e.target.value)}
+          />
+        </div>
+        <button
+          onClick={()=>upJogo(gid,j.id,'seguiuPlano',!(j.seguiuPlano!==false))}
+          style={{
+            background:j.seguiuPlano!==false?'var(--green-dim)':'var(--red-dim)',
+            border:`1.5px solid ${j.seguiuPlano!==false?'var(--green)':'var(--red)'}`,
+            borderRadius:'var(--radius-sm)',padding:'8px 10px',fontSize:12,
+            fontWeight:800,cursor:'pointer',
+            color:j.seguiuPlano!==false?'var(--green)':'var(--red)'
+          }}
+        >
+          {j.seguiuPlano!==false?'Seguiu o plano':'Fora do plano'}
+        </button>
+      </div>
+
+      <div className="calc-row" style={{marginBottom:8}}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:10,color:'var(--blue)',fontWeight:700,textTransform:'uppercase',marginBottom:4}}>Entrada R$</div>
+          {/* BUG FIX #13: inputmode="decimal" abre teclado numérico com vírgula no iOS */}
+          <input
+            style={inpS} type="text" inputMode="decimal" pattern="[0-9,.]*"
+            placeholder="0,00" value={j.entrada}
+            onChange={e=>upJogo(gid,j.id,'entrada',e.target.value)}
+            onFocus={e=>e.target.style.borderColor='var(--blue)'}
+            onBlur={e=>e.target.style.borderColor='var(--border)'}
+          />
+        </div>
+        <span className="calc-op">×</span>
+        <div style={{flex:1}}>
+          <div style={{fontSize:10,color:'var(--blue)',fontWeight:700,textTransform:'uppercase',marginBottom:4}}>Multiplicador</div>
+          <input
+            style={inpS} type="text" inputMode="decimal" pattern="[0-9,.]*"
+            placeholder="1.00" value={j.fator}
+            onChange={e=>upJogo(gid,j.id,'fator',e.target.value)}
+            onFocus={e=>e.target.style.borderColor='var(--blue)'}
+            onBlur={e=>e.target.style.borderColor='var(--border)'}
+          />
+        </div>
+        <span className="calc-op">=</span>
+        <div style={{flex:1}}>
+          <div style={{fontSize:10,color:'var(--blue)',fontWeight:700,textTransform:'uppercase',marginBottom:4}}>Retorno</div>
+          <div style={{
+            background:perdeu?'var(--red-dim)':jc.ok?'var(--blue-dim)':'var(--inp)',
+            border:`1.5px solid ${perdeu?'var(--red)':jc.ok?'var(--blue)':'var(--border)'}`,
+            borderRadius:'var(--radius-sm)',padding:'10px 8px',fontSize:13,
+            color:perdeu?'var(--red)':jc.ok?'var(--blue)':'var(--sub)',fontWeight:700,
+            minHeight:40,display:'flex',alignItems:'center'
+          }}>
+            {perdeu?'R$ 0,00':jc.ok?fmt(jc.re):'—'}
+          </div>
+        </div>
+      </div>
+
+      {/* BUG FIX #5: bloco lucro/perda só aparece quando tem resultado definido */}
+      {jc.ok&&j.resultado&&(
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',
+          borderTop:'1px solid var(--border2)',paddingTop:10,
+          marginBottom:ganhou?10:0}}>
+          <div>
+            <div style={{fontSize:10,color:perdeu?'var(--red)':'var(--green)',fontWeight:700,
+              textTransform:'uppercase',marginBottom:3}}>
+              {perdeu?'Perda':'Lucro líquido'}
+            </div>
+            <div style={{fontSize:20,fontWeight:900,
+              color:perdeu?'var(--red)':'var(--green)',fontFamily:'Georgia,serif'}}>
+              {fmt(Math.abs(jc.lu))}
+            </div>
+          </div>
+          <div style={{
+            background:perdeu?'var(--red-dim)':'var(--green-dim)',
+            border:`1.5px solid ${perdeu?'var(--red)':'var(--green)'}`,
+            borderRadius:'var(--radius)',padding:'8px 16px',textAlign:'center'
+          }}>
+            <div style={{fontSize:18,fontWeight:900,color:perdeu?'var(--red)':'var(--green)'}}>{fmtP(jc.pc)}</div>
+            <div style={{fontSize:10,color:'var(--sub)'}}>{perdeu?'perdido':'retorno'}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Reinvestimento */}
+      {ganhou&&jc.ok&&(
+        <div style={{borderTop:j.reinvest.ativo?'1px solid var(--border2)':undefined,paddingTop:j.reinvest.ativo?10:0}}>
+          <button
+            onClick={()=>togReinvest(gid,j.id)}
+            style={{
+              background:j.reinvest.ativo?'var(--blue)':'var(--blue-dim)',
+              border:'1.5px solid var(--blue)',borderRadius:'var(--radius-sm)',
+              padding:'8px 14px',fontSize:12,fontWeight:700,
+              color:j.reinvest.ativo?'var(--bg)':'var(--blue)',
+              cursor:'pointer',width:'100%',marginBottom:j.reinvest.ativo?10:0
+            }}
+          >
+            ♻️ {j.reinvest.ativo?'Ocultar Reinvestimento':'+ Reinvestimento'}
+          </button>
+
+          {j.reinvest.ativo&&(
+            <div style={{background:'var(--inp)',borderRadius:'var(--radius)',padding:12,border:'1px solid var(--border)'}}>
+              <div style={{fontSize:12,fontWeight:800,color:'var(--blue)',marginBottom:10}}>
+                ♻️ O que fez com {fmt(jc.re)}?
+              </div>
+              <div className="reinvest-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+                <div>
+                  <div style={{fontSize:10,color:'#6ee7b7',fontWeight:700,textTransform:'uppercase',marginBottom:4}}>🏦 Guardou (R$)</div>
+                  <input
+                    style={{...inpS,borderColor:'#6ee7b7'}} type="text" inputMode="decimal"
+                    pattern="[0-9,.]*" placeholder="0,00"
+                    value={j.reinvest.retirada}
+                    onChange={e=>upReinvest(gid,j.id,'retirada',e.target.value)}
+                  />
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:'var(--amber)',fontWeight:700,textTransform:'uppercase',marginBottom:4}}>♻️ Apostou de novo</div>
+                  <input
+                    style={{...inpS,borderColor:'var(--amber)'}} type="text" inputMode="decimal"
+                    pattern="[0-9,.]*" placeholder="0,00"
+                    value={j.reinvest.reaposta}
+                    onChange={e=>upReinvest(gid,j.id,'reaposta',e.target.value)}
+                  />
+                </div>
+              </div>
+              {jc.ra>0&&(
+                <div style={{marginBottom:8}}>
+                  <div style={{fontSize:10,color:'#c4b5fd',fontWeight:700,textTransform:'uppercase',marginBottom:4}}>🔄 Ganhou na reaposta (R$)</div>
+                  <input
+                    style={{...inpS,borderColor:'#c4b5fd'}} type="text" inputMode="decimal"
+                    pattern="[0-9,.]*" placeholder="0,00 se ainda não jogou"
+                    value={j.reinvest.retornoReaposta}
+                    onChange={e=>upReinvest(gid,j.id,'retornoReaposta',e.target.value)}
+                  />
+                </div>
+              )}
+              {jc.lr!==null&&(
+                <div style={{
+                  display:'inline-block',
+                  background:jc.lr>=0?'var(--green-dim)':'var(--red-dim)',
+                  border:`1px solid ${jc.lr>=0?'var(--green)':'var(--red)'}`,
+                  borderRadius:20,padding:'5px 14px',fontSize:13,
+                  color:jc.lr>=0?'var(--green)':'var(--red)'
+                }}>
+                  Reaposta: <strong>{fmt(jc.lr)} ({fmtP(jc.pr)})</strong>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── GrupoCard ── */
+function GrupoCard({g,props,delGrupo,upGrupoNome,togGrupo,togPerdas,addJogo}){
+  const borderColor=g.tL>=0?'var(--green)':'var(--red)';
+  return(
+    <div className="card" style={{marginBottom:14,overflow:'hidden'}}>
+      {/* Header do grupo */}
+      <div className="grupo-head" style={{
+        display:'flex',alignItems:'center',gap:8,padding:'13px',
+        background:'var(--surface2)',borderBottom:'1px solid var(--border2)'
+      }}>
+        <button
+          onClick={()=>togGrupo(g.id)}
+          style={{background:'none',border:'none',color:'var(--blue)',fontSize:13,cursor:'pointer',
+            fontWeight:700,width:22,height:22,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}
+        >{g.aberto?'▼':'▶'}</button>
+        <input
+          className="grupo-title"
+          value={g.nome}
+          onChange={e=>upGrupoNome(g.id,e.target.value)}
+          style={{flex:1,background:'transparent',border:'none',fontSize:15,fontWeight:800,
+            color:'var(--text)',minWidth:0}}
+        />
+        <div className="grupo-metrics" style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:2,marginRight:4}}>
+          <span style={{color:'var(--sub)',fontSize:11}}>{fmt(g.tE)}</span>
+          <span style={{color:g.tL>=0?'var(--green)':'var(--red)',fontSize:11,fontWeight:800}}>
+            {g.tL>=0?'+':''}{fmt(g.tL)} ({fmtP(g.pM)})
+          </span>
+        </div>
+        <button
+          onClick={()=>delGrupo(g.id)}
+          style={{background:'none',border:'none',fontSize:15,cursor:'pointer',color:'var(--sub)',
+            flexShrink:0,padding:'2px 4px',borderRadius:4,transition:'color .15s'}}
+          onMouseEnter={e=>e.currentTarget.style.color='var(--red)'}
+          onMouseLeave={e=>e.currentTarget.style.color='var(--sub)'}
+        >🗑</button>
+      </div>
+
+      {g.aberto&&(
+        <div style={{padding:'0 12px 12px'}}>
+          {/* Jogos neutros e ganhos */}
+          {[...g.neutros,...g.ganhos].map(j=>(
+            <JogoCard key={j.id} j={j} gid={g.id} {...props}/>
+          ))}
+
+          <button
+            onClick={()=>addJogo(g.id)}
+            style={{marginTop:10,background:'transparent',border:'1.5px dashed var(--border)',
+              borderRadius:'var(--radius-sm)',padding:'9px',fontSize:13,color:'var(--blue)',
+              cursor:'pointer',width:'100%',fontWeight:600,transition:'background .15s,border-color .15s'}}
+            onMouseEnter={e=>{e.currentTarget.style.background='var(--blue-dim)';e.currentTarget.style.borderColor='var(--blue)'}}
+            onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor='var(--border)'}}
+          >+ Adicionar jogo</button>
+
+          {/* Seção de Perdas */}
+          {g.perdas.length>0&&(
+            <div style={{marginTop:12,borderRadius:'var(--radius)',overflow:'hidden',border:'1px solid #4a1414'}}>
+              <button
+                onClick={()=>togPerdas(g.id)}
+                style={{display:'flex',alignItems:'center',gap:8,width:'100%',padding:'12px 14px',
+                  background:'rgba(248,113,113,0.1)',border:'none',cursor:'pointer'}}
+              >
+                <span style={{fontSize:13,fontWeight:700,color:'var(--red)'}}>{g.perdaAberta?'▼':'▶'}</span>
+                <span style={{fontWeight:800,color:'var(--red)',fontSize:14,flex:1,textAlign:'left'}}>❌ Perdas ({g.perdas.length})</span>
+                <span style={{color:'var(--red)',fontWeight:800,fontSize:13}}>{fmt(g.tPerdas)}</span>
+              </button>
+              {g.perdaAberta&&(
+                <div style={{padding:'0 10px 10px',background:'var(--surface2)'}}>
+                  {g.perdas.map(j=>(
+                    <JogoCard key={j.id} j={j} gid={g.id} {...props}/>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Total da tabela */}
+          {g.tE>0&&(
+            <div className="grupo-total" style={{
+              display:'flex',justifyContent:'space-between',alignItems:'center',
+              background:g.tL>=0?'var(--green-dim)':'var(--red-dim)',
+              border:`1px solid ${g.tL>=0?'var(--green)':'var(--red)'}`,
+              borderRadius:'var(--radius)',padding:'11px 14px',marginTop:10
+            }}>
+              <span style={{color:'var(--sub)',fontSize:13,fontWeight:600}}>Total da tabela</span>
+              <span style={{fontWeight:900,fontSize:15,color:g.tL>=0?'var(--green)':'var(--red)'}}>
+                {g.tL>=0?'+':''}{fmt(g.tL)} ({fmtP(g.pM)})
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   APP PRINCIPAL
+   ═══════════════════════════════════════════════ */
+function App(){
+  const [banca,setBanca]=useState(()=>load('cj_banca',''));
+  const [stake,setStake]=useState(()=>load('cj_stake',''));
+  const [plano,setPlano]=useState(()=>load('cj_plano',{stopLoss:'3',stopWin:'5',maxApostas:'10'}));
+  const [allWin,setAllWin]=useState(()=>load('cj_allwin',novoAllWin()));
+  const [dias,setDiasRaw]=useState(()=>load('cj_dias',[novoDia(dataHoje())]));
+  const [diaAtivo,setDiaAtivoRaw]=useState(()=>load('cj_diaAtivo',dataHoje()));
+
+  /* Setters com persistência */
+  const setDias=useCallback(fn=>{
+    setDiasRaw(prev=>{
+      const next=typeof fn==='function'?fn(prev):fn;
+      save('cj_dias',next);
+      return next;
+    });
+  },[]);
+  const setDiaAtivo=useCallback(v=>{setDiaAtivoRaw(v);save('cj_diaAtivo',v);},[]);
+  useEffect(()=>save('cj_banca',banca),[banca]);
+  useEffect(()=>save('cj_stake',stake),[stake]);
+  useEffect(()=>save('cj_plano',plano),[plano]);
+  useEffect(()=>save('cj_allwin',allWin),[allWin]);
+
+  /* Garante que diaAtivo sempre existe */
+  useEffect(()=>{
+    if(!dias.find(d=>d.data===diaAtivo)&&dias.length>0){
+      setDiaAtivoRaw(dias[0].data);
+    }
+  },[dias,diaAtivo]);
+
+  /* BUG FIX #2: addDia usa proximaData() */
+  const addDia=useCallback(()=>{
+    setDias(prev=>{
+      const s=proximaData(prev);
+      if(prev.find(x=>x.data===s))return prev;
+      const next=[...prev,novoDia(s)];
+      setDiaAtivo(s);
+      return next;
+    });
+  },[]);
+
+  const delDia=useCallback(data=>{
+    setDias(prev=>{
+      if(prev.length<=1)return prev;
+      const next=prev.filter(d=>d.data!==data);
+      if(diaAtivo===data)setDiaAtivo(next[next.length-1].data);
+      return next;
+    });
+  },[diaAtivo]);
+
+  const diaObj=useMemo(()=>dias.find(d=>d.data===diaAtivo)||dias[0],[dias,diaAtivo]);
+
+  const setGrupos=useCallback(fn=>setDias(prev=>
+    prev.map(d=>d.data===diaAtivo?{...d,grupos:fn(d.grupos)}:d)
+  ),[diaAtivo,setDias]);
+
+  const addGrupo=useCallback(()=>setGrupos(p=>[...p,novoGrupo(p.length+1)]),[setGrupos]);
+  const delGrupo=useCallback(gid=>setGrupos(p=>p.filter(g=>g.id!==gid)),[setGrupos]);
+  const upGrupoNome=useCallback((gid,v)=>setGrupos(p=>p.map(g=>g.id===gid?{...g,nome:v}:g)),[setGrupos]);
+  const togGrupo=useCallback(gid=>setGrupos(p=>p.map(g=>g.id===gid?{...g,aberto:!g.aberto}:g)),[setGrupos]);
+  const togPerdas=useCallback(gid=>setGrupos(p=>p.map(g=>g.id===gid?{...g,perdaAberta:!g.perdaAberta}:g)),[setGrupos]);
+  const addJogo=useCallback(gid=>setGrupos(p=>p.map(g=>g.id===gid?{...g,jogos:[...g.jogos,novoJogo()]}:g)),[setGrupos]);
+  const delJogo=useCallback((gid,jid)=>setGrupos(p=>p.map(g=>g.id===gid?{...g,jogos:g.jogos.filter(j=>j.id!==jid)}:g)),[setGrupos]);
+  const upJogo=useCallback((gid,jid,f,v)=>setGrupos(p=>p.map(g=>g.id===gid?{...g,jogos:g.jogos.map(j=>j.id===jid?{...j,[f]:v}:j)}:g)),[setGrupos]);
+  const upReinvest=useCallback((gid,jid,f,v)=>setGrupos(p=>p.map(g=>g.id===gid?{...g,jogos:g.jogos.map(j=>j.id===jid?{...j,reinvest:{...j.reinvest,[f]:v}}:j)}:g)),[setGrupos]);
+  const togReinvest=useCallback((gid,jid)=>setGrupos(p=>p.map(g=>g.id===gid?{...g,jogos:g.jogos.map(j=>j.id===jid?{...j,reinvest:{...j.reinvest,ativo:!j.reinvest.ativo}}:j)}:g)),[setGrupos]);
+  const setResultado=useCallback((gid,jid,res)=>setGrupos(p=>p.map(g=>g.id===gid?{...g,jogos:g.jogos.map(j=>j.id===jid?{...j,resultado:j.resultado===res?null:res}:j)}:g)),[setGrupos]);
+
+  /* Cálculos derivados */
+  const gruposCalc=useMemo(()=>(diaObj?.grupos||[]).map(g=>{
+    const jogos=g.jogos.map(calcJogo);
+    const ganhos=jogos.filter(j=>j.resultado==='ganhou'&&j.ok);
+    const perdas=jogos.filter(j=>j.resultado==='perdeu'&&j.ok);
+    const neutros=jogos.filter(j=>!j.resultado);
+    const ativos=jogos.filter(j=>j.ok);
+    const tE=ativos.reduce((s,j)=>s+j.en,0);
+    const tL=ativos.reduce((s,j)=>s+j.luTotal,0);
+    const pM=tE>0?(tL/tE)*100:0;
+    const tPerdas=perdas.reduce((s,j)=>s+j.en,0);
+    return{...g,jogos,ganhos,perdas,neutros,tE,tL,pM,tPerdas};
+  }),[diaObj]);
+
+  const totalDia=useMemo(()=>{
+    const tL=gruposCalc.reduce((s,g)=>s+g.tL,0);
+    const tP=gruposCalc.reduce((s,g)=>s+g.tPerdas,0);
+    const tE=gruposCalc.reduce((s,g)=>s+g.tE,0);
+    const jogos=gruposCalc.flatMap(g=>g.jogos);
+    const ativos=jogos.filter(j=>j.ok&&j.resultado);
+    const ganhos=ativos.filter(j=>j.resultado==='ganhou').length;
+    const perdas=ativos.filter(j=>j.resultado==='perdeu').length;
+    const foraPlano=ativos.filter(j=>j.seguiuPlano===false).length;
+    const pM=tE>0?(tL/tE)*100:0;
+    const acerto=ativos.length>0?(ganhos/ativos.length)*100:0;
+    const lucroMedio=ativos.length>0?tL/ativos.length:0;
+    return{tL,tP,tE,pM,jogos:ativos.length,ganhos,perdas,foraPlano,acerto,lucroMedio};
+  },[gruposCalc]);
+
+  const bancaNum=toNumber(banca);
+  const stakeNum=toNumber(stake);
+  const saldo=bancaNum>0?bancaNum+totalDia.tL:null;
+  const disponivelApostar=saldo!==null?Math.max(0,saldo):null;
+  const qtdStakeBanca=stakeNum>0?Math.floor(bancaNum/stakeNum):0;
+  const qtdStakeSaldo=stakeNum>0&&disponivelApostar!==null?Math.floor(disponivelApostar/stakeNum):0;
+  const stopLossNum=toNumber(plano.stopLoss);
+  const stopWinNum=toNumber(plano.stopWin);
+  const maxApostasNum=Math.floor(toNumber(plano.maxApostas));
+  const lucroStakes=stakeNum>0?totalDia.tL/stakeNum:0;
+  const stopLossValor=stakeNum>0&&stopLossNum>0?stopLossNum*stakeNum:0;
+  const stopWinValor=stakeNum>0&&stopWinNum>0?stopWinNum*stakeNum:0;
+  const atingiuStopLoss=stopLossValor>0&&totalDia.tL<=-stopLossValor;
+  const atingiuStopWin=stopWinValor>0&&totalDia.tL>=stopWinValor;
+  const atingiuMaxApostas=maxApostasNum>0&&totalDia.jogos>=maxApostasNum;
+  const deveParar=atingiuStopLoss||atingiuStopWin||atingiuMaxApostas;
+  const statusPlano=deveParar?'PARAR HOJE':totalDia.foraPlano>0?'ATENCAO':'LIBERADO';
+  const statusColor=deveParar?'var(--red)':totalDia.foraPlano>0?'var(--amber)':'var(--green)';
+  const lucroColor=totalDia.tL>=0?'var(--green)':'var(--red)';
+  const allWinCalc=useMemo(()=>calcAllWin(allWin),[allWin]);
+
+  const jogoProps={upJogo,delJogo,setResultado,togReinvest,upReinvest};
+  const setAllWinCampo=useCallback((campo,valor)=>setAllWin(p=>({...p,[campo]:valor})),[]);
+  const addAllWinOpp=useCallback(()=>setAllWin(p=>({...p,oportunidades:[...(p.oportunidades||[]),novaAllWinOpp()]})),[]);
+  const delAllWinOpp=useCallback(id=>setAllWin(p=>({...p,oportunidades:(p.oportunidades||[]).filter(o=>o.id!==id)})),[]);
+  const upAllWinOpp=useCallback((id,campo,valor)=>setAllWin(p=>({...p,oportunidades:(p.oportunidades||[]).map(o=>o.id===id?{...o,[campo]:valor}:o)})),[]);
+  const setAllWinResultado=useCallback((id,res)=>setAllWin(p=>({...p,oportunidades:(p.oportunidades||[]).map(o=>o.id===id?{...o,resultado:o.resultado===res?null:res}:o)})),[]);
+  const resetAllWin=useCallback(()=>setAllWin(novoAllWin()),[]);
+  const importRef=useRef(null);
+  const exportarDados=useCallback(()=>{
+    const data={banca,stake,plano,allWin,dias,diaAtivo,exportadoEm:new Date().toISOString()};
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`controle-jogos-${dataHoje().replace('/','-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },[banca,stake,plano,allWin,dias,diaAtivo]);
+  const importarDados=useCallback(e=>{
+    const file=e.target.files?.[0];
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const data=JSON.parse(reader.result);
+        if(data.banca!=null)setBanca(data.banca);
+        if(data.stake!=null)setStake(data.stake);
+        if(data.plano)setPlano(data.plano);
+        if(data.allWin)setAllWin(data.allWin);
+        if(Array.isArray(data.dias)&&data.dias.length)setDias(data.dias);
+        if(data.diaAtivo)setDiaAtivo(data.diaAtivo);
+      }catch{
+        alert('Arquivo de backup invalido.');
+      }
+      e.target.value='';
+    };
+    reader.readAsText(file);
+  },[setDias,setDiaAtivo]);
+
+  /* ── Barra de datas (reaproveitada no mobile e desktop) ── */
+  const DateBar=()=>(
+    <div>
+      <div style={{fontSize:10,fontWeight:800,color:'var(--sub)',textTransform:'uppercase',
+        letterSpacing:.8,marginBottom:8,padding:'0 2px'}}>
+        📅 Dias
+      </div>
+      <div className="date-scroll" style={{display:'flex',gap:6,overflowX:'auto',paddingBottom:2}}>
+        {dias.map(d=>{
+          const dc=d.grupos.flatMap(g=>g.jogos.map(calcJogo)).filter(j=>j.ok);
+          const dl=dc.reduce((s,j)=>s+j.luTotal,0);
+          const isAtivo=diaAtivo===d.data;
+          return(
+            <div className="date-item" key={d.data} style={{display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
+              <button
+                className="date-btn"
+                onClick={()=>setDiaAtivo(d.data)}
+                style={{
+                  flexShrink:0,padding:'8px 14px',borderRadius:20,
+                  border:`2px solid ${isAtivo?'var(--blue)':'var(--border)'}`,
+                  background:isAtivo?'var(--blue)':'transparent',
+                  color:isAtivo?'var(--bg)':'var(--sub)',
+                  fontWeight:700,fontSize:13,cursor:'pointer',
+                  display:'flex',gap:6,alignItems:'center',
+                  transition:'all .15s'
+                }}
+              >
+                <span>{d.data}</span>
+                {dc.length>0&&(
+                  <span style={{fontSize:10,opacity:.85,fontWeight:800,
+                    color:isAtivo?'var(--bg)':dl>=0?'var(--green)':'var(--red)'}}>
+                    {dl>=0?'+':''}{fmtCurto(dl)}
+                  </span>
+                )}
+              </button>
+              {dias.length>1&&(
+                <button
+                  onClick={()=>delDia(d.data)}
+                  title="Remover dia"
+                  style={{background:'none',border:'none',color:'var(--sub)',fontSize:13,
+                    cursor:'pointer',padding:'2px 4px',opacity:.5,transition:'opacity .15s'}}
+                  onMouseEnter={e=>e.currentTarget.style.opacity='1'}
+                  onMouseLeave={e=>e.currentTarget.style.opacity='.5'}
+                >×</button>
+              )}
+            </div>
+          );
+        })}
+        <button
+          onClick={addDia}
+          style={{flexShrink:0,padding:'8px 14px',borderRadius:20,
+            border:'2px dashed var(--border)',background:'transparent',
+            color:'var(--sub)',fontWeight:700,fontSize:13,cursor:'pointer',
+            transition:'border-color .15s,color .15s'}}
+          onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--blue)';e.currentTarget.style.color='var(--blue)'}}
+          onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.color='var(--sub)'}}
+        >+ Dia</button>
+      </div>
+    </div>
+  );
+
+  /* ── Bloco de banca ── */
+  const BancaBlock=()=>(
+    <div>
+      <div style={{fontSize:10,fontWeight:800,color:'var(--sub)',textTransform:'uppercase',
+        letterSpacing:.8,marginBottom:8}}>💰 Banca</div>
+      <div className="banca-grid" style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)',gap:8,marginBottom:10}}>
+        <div>
+          <div style={{fontSize:10,color:'var(--blue)',fontWeight:700,textTransform:'uppercase',marginBottom:4}}>Banca total</div>
+          <input
+            className="inp-base"
+            type="text" inputMode="decimal" pattern="[0-9,.]*"
+            placeholder="Ex: 1000,00"
+            value={banca} onChange={e=>setBanca(e.target.value)}
+            style={{fontSize:16,fontWeight:700,borderColor:'var(--blue)'}}
+          />
+        </div>
+        <div>
+          <div style={{fontSize:10,color:'var(--amber)',fontWeight:700,textTransform:'uppercase',marginBottom:4}}>Stake por aposta</div>
+          <input
+            className="inp-base"
+            type="text" inputMode="decimal" pattern="[0-9,.]*"
+            placeholder="Ex: 10,00"
+            value={stake} onChange={e=>setStake(e.target.value)}
+            style={{fontSize:16,fontWeight:700,borderColor:'var(--amber)'}}
+          />
+        </div>
+      </div>
+      <div style={{display:'flex',gap:10,alignItems:'center',marginBottom:10}}>
+        {bancaNum>0&&saldo!==null&&(
+          <div style={{textAlign:'right',flexShrink:0}}>
+            <div style={{fontSize:10,color:'var(--sub)',fontWeight:700,textTransform:'uppercase'}}>Saldo</div>
+            <div style={{fontSize:16,fontWeight:900,
+              color:saldo>=bancaNum?'var(--green)':saldo<bancaNum&&saldo>0?'var(--amber)':'var(--red)',
+              fontFamily:'Georgia,serif'}}>{fmt(saldo)}</div>
+          </div>
+        )}
+      </div>
+      {bancaNum>0&&(
+        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+          <span className="tag" style={{background:'var(--blue-dim)',border:'1px solid var(--blue)',color:'var(--blue)'}}>
+            Banca: {fmt(bancaNum)}
+          </span>
+          {stakeNum>0&&(
+            <span className="tag" style={{background:'rgba(251,191,36,0.12)',border:'1px solid var(--amber)',color:'var(--amber)'}}>
+              Stake: {fmt(stakeNum)} · {qtdStakeBanca} apostas
+            </span>
+          )}
+          {stakeNum>0&&saldo!==null&&saldo!==bancaNum&&(
+            <span className="tag" style={{background:'var(--blue-dim)',border:'1px solid var(--blue)',color:'var(--blue)'}}>
+              Saldo atual: {qtdStakeSaldo} apostas
+            </span>
+          )}
+          <span className="tag" style={{
+            background:totalDia.tL>=0?'var(--green-dim)':'var(--red-dim)',
+            border:`1px solid ${totalDia.tL>=0?'var(--green)':'var(--red)'}`,
+            color:totalDia.tL>=0?'var(--green)':'var(--red)'}}>
+            {totalDia.tL>=0?'+':''}{fmt(totalDia.tL)} hoje
+          </span>
+        </div>
+      )}
+    </div>
+  );
+
+  /* ── Summary Cards ── */
+  const PlanoBlock=()=>(
+    <div>
+      <div className="section-title">Plano do dia</div>
+      <div
+        className="risk-banner"
+        style={{
+          background:deveParar?'var(--red-dim)':totalDia.foraPlano>0?'rgba(251,191,36,0.12)':'var(--green-dim)',
+          border:`1.5px solid ${statusColor}`,
+          color:statusColor,
+          marginBottom:10
+        }}
+      >
+        {statusPlano}
+        <div style={{fontSize:11,fontWeight:600,color:'var(--sub)',marginTop:3}}>
+          {atingiuStopLoss?'Stop loss atingido. ':''}
+          {atingiuStopWin?'Stop win atingido. ':''}
+          {atingiuMaxApostas?'Limite de apostas atingido. ':''}
+          {!deveParar&&totalDia.foraPlano>0?'Existe aposta marcada fora do plano. ':''}
+          {!deveParar&&totalDia.foraPlano===0?'Dentro dos limites configurados. ':''}
+        </div>
+      </div>
+      <div className="plan-grid">
+        <div>
+          <div className="mini-label">Stop loss (stakes)</div>
+          <input className="inp-base" type="text" inputMode="decimal" pattern="[0-9,.]*"
+            value={plano.stopLoss} onChange={e=>setPlano(p=>({...p,stopLoss:e.target.value}))} placeholder="3"/>
+        </div>
+        <div>
+          <div className="mini-label">Stop win (stakes)</div>
+          <input className="inp-base" type="text" inputMode="decimal" pattern="[0-9,.]*"
+            value={plano.stopWin} onChange={e=>setPlano(p=>({...p,stopWin:e.target.value}))} placeholder="5"/>
+        </div>
+        <div>
+          <div className="mini-label">Max apostas</div>
+          <input className="inp-base" type="text" inputMode="numeric" pattern="[0-9]*"
+            value={plano.maxApostas} onChange={e=>setPlano(p=>({...p,maxApostas:e.target.value}))} placeholder="10"/>
+        </div>
+        <div>
+          <div className="mini-label">Resultado em stakes</div>
+          <div className="inp-base" style={{borderColor:lucroColor,color:lucroColor,fontWeight:900}}>
+            {stakeNum>0?`${lucroStakes>=0?'+':''}${lucroStakes.toFixed(1)} st`:'Defina stake'}
+          </div>
+        </div>
+      </div>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:10}}>
+        {stopLossValor>0&&<span className="tag" style={{background:'var(--red-dim)',border:'1px solid var(--red)',color:'var(--red)'}}>Loss: -{fmt(stopLossValor)}</span>}
+        {stopWinValor>0&&<span className="tag" style={{background:'var(--green-dim)',border:'1px solid var(--green)',color:'var(--green)'}}>Win: +{fmt(stopWinValor)}</span>}
+        {maxApostasNum>0&&<span className="tag" style={{background:'var(--blue-dim)',border:'1px solid var(--blue)',color:'var(--blue)'}}>{totalDia.jogos}/{maxApostasNum} apostas</span>}
+      </div>
+    </div>
+  );
+
+  const BackupBlock=()=>(
+    <div>
+      <div className="section-title">Backup</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+        <button
+          onClick={exportarDados}
+          style={{background:'var(--blue-dim)',border:'1.5px solid var(--blue)',borderRadius:'var(--radius-sm)',padding:10,color:'var(--blue)',fontWeight:800,cursor:'pointer'}}
+        >
+          Exportar
+        </button>
+        <button
+          onClick={()=>importRef.current?.click()}
+          style={{background:'var(--green-dim)',border:'1.5px solid var(--green)',borderRadius:'var(--radius-sm)',padding:10,color:'var(--green)',fontWeight:800,cursor:'pointer'}}
+        >
+          Importar
+        </button>
+      </div>
+      <input ref={importRef} type="file" accept="application/json" onChange={importarDados} style={{display:'none'}}/>
+    </div>
+  );
+
+  const AllWinBlock=()=>(
+    <div>
+      <div className="section-title">All Win - banca separada</div>
+      <div
+        className="risk-banner"
+        style={{
+          background:allWinCalc.travado?'var(--red-dim)':'var(--blue-dim)',
+          border:`1.5px solid ${allWinCalc.travado?'var(--red)':'var(--blue)'}`,
+          color:allWinCalc.travado?'var(--red)':'var(--blue)',
+          marginBottom:10
+        }}
+      >
+        {allWinCalc.travado?'Sequencia encerrada':'Sequencia em cascata'}
+        <div style={{fontSize:11,fontWeight:600,color:'var(--sub)',marginTop:3}}>
+          O retorno ganho vira automaticamente a entrada da proxima oportunidade.
+        </div>
+      </div>
+      <div className="plan-grid" style={{marginBottom:10}}>
+        <div>
+          <div className="mini-label">Banca All Win</div>
+          <input className="inp-base" type="text" inputMode="decimal" pattern="[0-9,.]*"
+            placeholder="Ex: 500,00" value={allWin.banca||''}
+            onChange={e=>setAllWinCampo('banca',e.target.value)}/>
+        </div>
+        <div>
+          <div className="mini-label">Stake inicial</div>
+          <input className="inp-base" type="text" inputMode="decimal" pattern="[0-9,.]*"
+            placeholder="Ex: 100,00" value={allWin.stakeInicial||''}
+            onChange={e=>setAllWinCampo('stakeInicial',e.target.value)}/>
+        </div>
+      </div>
+      <div style={{display:'grid',gap:8}}>
+        {allWinCalc.oportunidades.map(o=>(
+          <div key={o.id} style={{background:'var(--surface2)',border:'1px solid var(--border2)',borderLeft:`3px solid ${o.perdeu?'var(--red)':o.ganhou?'var(--green)':'var(--blue)'}`,borderRadius:'var(--radius)',padding:10}}>
+            <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:8}}>
+              <input
+                className="inp-base"
+                placeholder={`Oportunidade ${o.idx}`}
+                value={o.nome||''}
+                onChange={e=>upAllWinOpp(o.id,'nome',e.target.value)}
+                style={{flex:1,minWidth:0}}
+              />
+              <button
+                onClick={()=>delAllWinOpp(o.id)}
+                style={{width:36,background:'var(--red-dim)',border:'1px solid var(--red)',borderRadius:'var(--radius-sm)',color:'var(--red)',fontWeight:900,cursor:'pointer'}}
+              >x</button>
+            </div>
+            <div className="plan-grid" style={{marginBottom:8}}>
+              <div>
+                <div className="mini-label">Entrada</div>
+                <div className="inp-base" style={{fontWeight:900,color:o.entrada>0?'var(--text)':'var(--sub)'}}>{o.entrada>0?fmt(o.entrada):'Aguardando'}</div>
+              </div>
+              <div>
+                <div className="mini-label">Odd</div>
+                <input className="inp-base" type="text" inputMode="decimal" pattern="[0-9,.]*"
+                  placeholder="1,80" value={o.odd||''}
+                  onChange={e=>upAllWinOpp(o.id,'odd',e.target.value)}/>
+              </div>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,marginBottom:8}}>
+              <div>
+                <div style={{fontSize:10,color:'var(--sub)',fontWeight:800,textTransform:'uppercase'}}>Retorno possivel</div>
+                <div style={{fontSize:16,fontWeight:900,color:o.retorno>0?'var(--blue)':'var(--sub)',fontFamily:'Georgia,serif'}}>{o.retorno>0?fmt(o.retorno):'--'}</div>
+              </div>
+              <div style={{display:'flex',gap:6}}>
+                <button
+                  onClick={()=>setAllWinResultado(o.id,'ganhou')}
+                  style={{background:o.ganhou?'var(--green-dim)':'transparent',border:'1.5px solid var(--green)',borderRadius:'var(--radius-sm)',padding:'8px 10px',color:'var(--green)',fontWeight:800,cursor:'pointer'}}
+                >Win</button>
+                <button
+                  onClick={()=>setAllWinResultado(o.id,'perdeu')}
+                  style={{background:o.perdeu?'var(--red-dim)':'transparent',border:'1.5px solid var(--red)',borderRadius:'var(--radius-sm)',padding:'8px 10px',color:'var(--red)',fontWeight:800,cursor:'pointer'}}
+                >Loss</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={addAllWinOpp}
+        disabled={allWinCalc.travado}
+        style={{marginTop:10,width:'100%',background:'transparent',border:'1.5px dashed var(--border)',borderRadius:'var(--radius-sm)',padding:10,color:allWinCalc.travado?'var(--sub)':'var(--blue)',fontWeight:800,cursor:allWinCalc.travado?'not-allowed':'pointer'}}
+      >+ Adicionar oportunidade</button>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:10}}>
+        <span className="tag" style={{background:'var(--blue-dim)',border:'1px solid var(--blue)',color:'var(--blue)'}}>Saldo ciclo: {fmt(allWinCalc.saldoProjetado)}</span>
+        <span className="tag" style={{background:allWinCalc.lucroAtual>=0?'var(--green-dim)':'var(--red-dim)',border:`1px solid ${allWinCalc.lucroAtual>=0?'var(--green)':'var(--red)'}`,color:allWinCalc.lucroAtual>=0?'var(--green)':'var(--red)'}}>Lucro: {fmt(allWinCalc.lucroAtual)}</span>
+        {allWinCalc.bancaFinal!==null&&<span className="tag" style={{background:'rgba(251,191,36,0.12)',border:'1px solid var(--amber)',color:'var(--amber)'}}>Banca final: {fmt(allWinCalc.bancaFinal)}</span>}
+      </div>
+      <button
+        onClick={resetAllWin}
+        style={{marginTop:8,width:'100%',background:'var(--red-dim)',border:'1px solid var(--red)',borderRadius:'var(--radius-sm)',padding:9,color:'var(--red)',fontWeight:800,cursor:'pointer'}}
+      >Resetar All Win</button>
+    </div>
+  );
+
+  const SummaryCards=()=>(
+    <div className="summary-grid" style={{display:'grid',gap:10}}>
+      <StatCard
+        label="Lucro do dia" icon=""
+        value={`${totalDia.tL>=0?'+':''}${fmt(totalDia.tL)}`}
+        sub={fmtP(totalDia.pM)}
+        color={totalDia.tL>=0?'#4ade80':'#f87171'}
+      />
+      <StatCard
+        label="Perdas" icon="❌"
+        value={fmt(totalDia.tP)}
+        sub="valor apostado e perdido"
+        color="#f87171"
+      />
+      <StatCard
+        label="Taxa de acerto" icon=""
+        value={`${totalDia.acerto.toFixed(0)}%`}
+        sub={`${totalDia.ganhos}/${totalDia.jogos} apostas`}
+        color="#38bdf8"
+      />
+      <StatCard
+        label="Lucro medio" icon=""
+        value={fmt(totalDia.lucroMedio)}
+        sub={stakeNum>0?`${(totalDia.lucroMedio/stakeNum).toFixed(1)} stakes`:''}
+        color={totalDia.lucroMedio>=0?'#4ade80':'#f87171'}
+      />
+      {bancaNum>0&&stakeNum>0&&<StatCard
+        label="Apostas possíveis" icon="🎲"
+        value={`${qtdStakeBanca}x`}
+        sub={`${fmt(stakeNum)} por aposta`}
+        color="#fbbf24"
+      />}
+      {bancaNum>0&&<StatCard
+        label="Disponível" icon="🎯"
+        value={fmt(disponivelApostar)}
+        sub={stakeNum>0?`${qtdStakeSaldo} stakes no saldo`:`${((disponivelApostar/bancaNum)*100).toFixed(0)}% da banca`}
+        color={disponivelApostar>0?'#4ade80':'#f87171'}
+      />}
+      {bancaNum>0&&totalDia.tE>0&&<StatCard
+        label="Já apostado" icon="💸"
+        value={fmt(totalDia.tE)}
+        sub={bancaNum>0?`${((totalDia.tE/bancaNum)*100).toFixed(0)}% da banca`:''}
+        color="#fbbf24"
+      />}
+    </div>
+  );
+
+  return(
+    <div className="app-shell" style={{background:'var(--bg)'}}>
+
+      {/* ── HEADER ── */}
+      <div className="app-header" style={{
+        display:'flex',alignItems:'center',gap:12,
+        padding:'14px 16px',
+        background:'var(--surface)',
+        borderBottom:'1px solid var(--border2)',
+        position:'sticky',top:0,zIndex:20
+      }}>
+        <div className="brand-icon" style={{
+          width:42,height:42,flexShrink:0,
+          background:'linear-gradient(135deg,#0ea5e9,#06b6d4)',
+          borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20
+        }}>🎮</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div className="brand-title" style={{fontSize:18,fontWeight:900,color:'var(--text)',fontFamily:'Georgia,serif',lineHeight:1}}>
+            Controle de Jogos
+          </div>
+          <div className="brand-subtitle" style={{fontSize:11,color:'var(--blue)',fontWeight:700,marginTop:2}}>
+            Entrada · Multiplicador · Retorno
+          </div>
+        </div>
+        {/* Resumo rápido no header — visível apenas no mobile */}
+        <div className="hide-desktop" style={{textAlign:'right',flexShrink:0}}>
+          <div style={{fontSize:11,color:'var(--sub)'}}>Hoje</div>
+          <div style={{fontSize:15,fontWeight:900,color:lucroColor,fontFamily:'Georgia,serif'}}>
+            {totalDia.tL>=0?'+':''}{fmt(totalDia.tL)}
+          </div>
+        </div>
+      </div>
+
+      {/* ══ SIDEBAR (desktop) ══ */}
+      <div className="sidebar">
+        <BancaBlock/>
+        <div style={{borderTop:'1px solid var(--border2)',paddingTop:12}}>
+          <PlanoBlock/>
+        </div>
+        <div style={{borderTop:'1px solid var(--border2)',paddingTop:12}}>
+          <DateBar/>
+        </div>
+        <div style={{borderTop:'1px solid var(--border2)',paddingTop:12}}>
+          <SummaryCards/>
+        </div>
+        <div style={{borderTop:'1px solid var(--border2)',paddingTop:12}}>
+          <BackupBlock/>
+        </div>
+        <a
+          className="hide-mobile"
+          href="https://costagit33.github.io/desempenho/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display:'block',textAlign:'center',textDecoration:'none',
+            background:'var(--green-dim)',border:'1.5px solid var(--green)',
+            borderRadius:'var(--radius)',padding:11,fontSize:14,fontWeight:800,
+            color:'var(--green)',width:'100%'
+          }}
+        >Desempenho</a>
+        {/* Botão nova tabela na sidebar do desktop */}
+        <button
+          className="hide-mobile"
+          onClick={addGrupo}
+          style={{
+            marginTop:'auto',background:'transparent',border:'2px dashed var(--border)',
+            borderRadius:'var(--radius)',padding:11,fontSize:14,fontWeight:700,
+            cursor:'pointer',color:'var(--blue)',transition:'all .15s',width:'100%'
+          }}
+          onMouseEnter={e=>{e.currentTarget.style.background='var(--blue-dim)';e.currentTarget.style.borderColor='var(--blue)'}}
+          onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor='var(--border)'}}
+        >+ Nova tabela</button>
+      </div>
+
+      {/* ══ CONTEÚDO PRINCIPAL ══ */}
+      <div className="main-content">
+
+        {/* Banca e Date — APENAS NO MOBILE (dentro do scroll) */}
+        <div className="hide-desktop" style={{marginBottom:12}}>
+          <div className="card" style={{padding:14,marginBottom:10}}>
+            <BancaBlock/>
+          </div>
+          <div className="card" style={{padding:14,marginBottom:10}}>
+            <PlanoBlock/>
+          </div>
+          {/* Sticky date bar mobile */}
+          <div style={{
+            background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:'var(--radius)',
+            padding:'12px 14px',marginBottom:10
+          }}>
+            <DateBar/>
+          </div>
+          <div style={{marginBottom:10}}>
+            <SummaryCards/>
+          </div>
+          <div className="card" style={{padding:14,marginBottom:10}}>
+            <BackupBlock/>
+          </div>
+          <a
+            href="https://costagit33.github.io/desempenho/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display:'block',textAlign:'center',textDecoration:'none',marginBottom:10,
+              background:'var(--green-dim)',border:'1.5px solid var(--green)',
+              borderRadius:'var(--radius)',padding:12,fontSize:14,fontWeight:800,
+              color:'var(--green)'
+            }}
+          >Abrir Desempenho</a>
+        </div>
+
+        {/* Botão nova tabela mobile */}
+        <div className="card" style={{padding:14,marginBottom:14}}>
+          <AllWinBlock/>
+        </div>
+
+        <button
+          className="hide-desktop"
+          onClick={addGrupo}
+          style={{
+            display:'block',width:'100%',marginBottom:14,
+            background:'transparent',border:'2px dashed var(--border)',
+            borderRadius:'var(--radius)',padding:11,fontSize:14,fontWeight:700,
+            cursor:'pointer',color:'var(--blue)'
+          }}
+        >+ Adicionar tabela</button>
+
+        {/* Lista de grupos */}
+        {gruposCalc.map(g=>(
+          <GrupoCard
+            key={g.id} g={g} props={jogoProps}
+            delGrupo={delGrupo} upGrupoNome={upGrupoNome}
+            togGrupo={togGrupo} togPerdas={togPerdas} addJogo={addJogo}
+          />
+        ))}
+
+        {gruposCalc.length===0&&(
+          <div style={{textAlign:'center',padding:'40px 20px',color:'var(--sub)'}}>
+            <div style={{fontSize:32,marginBottom:12}}>📋</div>
+            <div style={{fontSize:14,fontWeight:600}}>Nenhuma tabela ainda</div>
+            <div style={{fontSize:12,marginTop:4}}>Clique em "+ Adicionar tabela" para começar</div>
+          </div>
+        )}
+      </div>
+
+      {/* ══ RODAPÉ FIXO (BUG FIX #10: safe-area-inset-bottom) ══ */}
+      <div
+        className="footer-bar"
+        style={{
+          background:'rgba(17,28,39,0.97)',backdropFilter:'blur(12px)',
+          WebkitBackdropFilter:'blur(12px)',
+          borderTop:'1px solid var(--border2)',
+          padding:'10px 20px',
+          display:'flex',justifyContent:'space-between',alignItems:'center',
+          zIndex:10
+        }}
+      >
+        <div style={{textAlign:'left'}}>
+          <div style={{fontSize:10,color:'var(--sub)',fontWeight:700,textTransform:'uppercase'}}>Perdas</div>
+          <div style={{fontSize:13,fontWeight:800,color:'var(--red)'}}>−{fmt(totalDia.tP)}</div>
+        </div>
+        {saldo!==null&&(
+          <div style={{textAlign:'center'}}>
+            <div style={{fontSize:10,color:'var(--sub)',fontWeight:700,textTransform:'uppercase'}}>Saldo</div>
+            <div style={{fontSize:15,fontWeight:900,
+              color:saldo>=bancaNum?'var(--green)':saldo>0?'var(--amber)':'var(--red)',
+              fontFamily:'Georgia,serif'}}>💰 {fmt(saldo)}</div>
+          </div>
+        )}
+        <div style={{textAlign:'right'}}>
+          <div style={{fontSize:10,color:'var(--sub)',fontWeight:700,textTransform:'uppercase'}}>Lucro hoje</div>
+          <div style={{fontSize:13,fontWeight:800,color:lucroColor}}>
+            {totalDia.tL>=0?'+':''}{fmt(totalDia.tL)}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
